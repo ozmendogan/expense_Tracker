@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/expense.dart';
 import '../utils/category_config.dart';
+import '../utils/date_formatter.dart';
 
 class ExpenseCard extends StatelessWidget {
   final Expense expense;
@@ -62,7 +63,7 @@ class ExpenseCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${expense.date.day.toString().padLeft(2, '0')}/${expense.date.month.toString().padLeft(2, '0')}/${expense.date.year}',
+                        formatDate(expense.date),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
