@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/expense.dart';
+import 'expense_card.dart';
 
 class ExpenseList extends StatelessWidget {
   final List<Expense> expenses;
@@ -12,20 +13,11 @@ class ExpenseList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: expenses.length,
       itemBuilder: (context, index) {
         final expense = expenses[index];
-        return ListTile(
-          title: Text(expense.title),
-          subtitle: Text(expense.categoryName),
-          trailing: Text(
-            '₺${expense.amount.toStringAsFixed(2)}',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        );
+        return ExpenseCard(expense: expense);
       },
     );
   }
