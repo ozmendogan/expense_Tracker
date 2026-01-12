@@ -12,12 +12,26 @@ class CategoryAnalysisScreen extends ConsumerWidget {
     switch (category) {
       case Category.food:
         return 'Yemek';
-      case Category.rent:
-        return 'Kira';
       case Category.transport:
         return 'Ulaşım';
+      case Category.rent:
+        return 'Kira';
       case Category.shopping:
         return 'Alışveriş';
+      case Category.utilities:
+        return 'Faturalar';
+      case Category.entertainment:
+        return 'Eğlence';
+      case Category.health:
+        return 'Sağlık';
+      case Category.education:
+        return 'Eğitim';
+      case Category.subscription:
+        return 'Abonelik';
+      case Category.travel:
+        return 'Seyahat';
+      case Category.gift:
+        return 'Hediye';
       case Category.other:
         return 'Diğer';
     }

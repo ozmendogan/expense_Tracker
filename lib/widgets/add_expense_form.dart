@@ -162,14 +162,35 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
                       case Category.food:
                         categoryName = 'Yemek';
                         break;
-                      case Category.rent:
-                        categoryName = 'Kira';
-                        break;
                       case Category.transport:
                         categoryName = 'Ulaşım';
                         break;
+                      case Category.rent:
+                        categoryName = 'Kira';
+                        break;
                       case Category.shopping:
                         categoryName = 'Alışveriş';
+                        break;
+                      case Category.utilities:
+                        categoryName = 'Faturalar';
+                        break;
+                      case Category.entertainment:
+                        categoryName = 'Eğlence';
+                        break;
+                      case Category.health:
+                        categoryName = 'Sağlık';
+                        break;
+                      case Category.education:
+                        categoryName = 'Eğitim';
+                        break;
+                      case Category.subscription:
+                        categoryName = 'Abonelik';
+                        break;
+                      case Category.travel:
+                        categoryName = 'Seyahat';
+                        break;
+                      case Category.gift:
+                        categoryName = 'Hediye';
                         break;
                       case Category.other:
                         categoryName = 'Diğer';

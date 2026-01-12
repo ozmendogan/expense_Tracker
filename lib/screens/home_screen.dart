@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../models/expense.dart';
-import '../widgets/expense_list.dart';
+import '../widgets/expense_card.dart';
 import '../widgets/add_expense_form.dart';
 import '../widgets/empty_expense_state.dart';
-import '../widgets/monthly_summary_card.dart';
+import '../widgets/sticky_summary_header.dart';
 import '../widgets/category_breakdown_list.dart';
-import '../widgets/month_selector.dart';
 import 'category_analysis_screen.dart';
 import 'settings_screen.dart';
 
@@ -79,10 +79,9 @@ class HomeScreen extends ConsumerWidget {
     final currentMonthExpenses = ref.watch(currentMonthExpensesProvider);
     final categoryTotals = ref.watch(currentMonthCategoryTotalsProvider);
 
+    final monthName = DateFormat('MMMM yyyy', 'tr_TR').format(selectedMonth);
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gider Takibi'),
-      ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -132,24 +131,57 @@ class HomeScreen extends ConsumerWidget {
           ? EmptyExpenseState(
               onAddExpense: () => _showAddExpenseModal(context),
             )
-          : Column(
-              children: [
-                MonthSelector(
-                  selectedMonth: selectedMonth,
-                  onPreviousMonth: () => _previousMonth(ref),
-                  onNextMonth: () => _nextMonth(ref),
+          : CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  expandedHeight: 100,
+                  floating: false,
+                  pinned: true,
+                  flexibleSpace: FlexibleSpaceBar(
+                    title: Text(
+                      monthName,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    centerTitle: true,
+                    titlePadding: const EdgeInsets.only(bottom: 16),
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left),
+                      onPressed: () => _previousMonth(ref),
+                      tooltip: 'Önceki ay',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed: () => _nextMonth(ref),
+                      tooltip: 'Sonraki ay',
+                    ),
+                  ],
                 ),
-                MonthlySummaryCard(
-                  totalAmount: currentMonthTotal,
-                  expenseCount: currentMonthExpenses.length,
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: StickySummaryHeader(
+                    totalAmount: currentMonthTotal,
+                    expenseCount: currentMonthExpenses.length,
+                  ),
                 ),
-                CategoryBreakdownList(categoryTotals: categoryTotals),
-                Expanded(
-                  child: ExpenseList(
-                    expenses: currentMonthExpenses,
-                    onExpenseLongPress: (expense) {
-                      _showExpenseActions(context, ref, expense);
+                SliverToBoxAdapter(
+                  child: CategoryBreakdownList(categoryTotals: categoryTotals),
+                ),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final expense = currentMonthExpenses[index];
+                      return ExpenseCard(
+                        expense: expense,
+                        onLongPress: () {
+                          _showExpenseActions(context, ref, expense);
+                        },
+                      );
                     },
+                    childCount: currentMonthExpenses.length,
                   ),
                 ),
               ],

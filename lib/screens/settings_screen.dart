@@ -73,9 +73,9 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 16),
           Slider(
             value: typography.textScaleFactor,
-            min: 0.85,
+            min: 0.8,
             max: 1.25,
-            divisions: 8,
+            divisions: 9,
             onChanged: (value) {
               typography.setTextScaleFactor(value);
             },
