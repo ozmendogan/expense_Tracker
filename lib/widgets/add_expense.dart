@@ -33,6 +33,7 @@ class _AddExpenseState extends State<AddExpense> {
       initialDate: _selectedDate,
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
+      locale: Localizations.localeOf(context),
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {

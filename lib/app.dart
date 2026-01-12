@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'providers/typography_provider.dart';
@@ -30,16 +31,44 @@ class ExpenseTrackerApp extends StatelessWidget {
           ),
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
+            locale: const Locale('tr', 'TR'),
+            supportedLocales: const [
+              Locale('tr', 'TR'),
+              Locale('en', 'US'),
+            ],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             theme: ThemeData(
               useMaterial3: true,
               colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
               textTheme: selectedTextTheme,
+              fontFamily: _getFontFamilyName(fontName),
             ),
             home: const HomeScreen(),
           ),
         );
       },
     );
+  }
+
+  String _getFontFamilyName(String fontName) {
+    switch (fontName) {
+      case 'Inter':
+        return GoogleFonts.inter().fontFamily ?? 'Inter';
+      case 'Roboto':
+        return GoogleFonts.roboto().fontFamily ?? 'Roboto';
+      case 'Poppins':
+        return GoogleFonts.poppins().fontFamily ?? 'Poppins';
+      case 'Montserrat':
+        return GoogleFonts.montserrat().fontFamily ?? 'Montserrat';
+      case 'Open Sans':
+        return GoogleFonts.openSans().fontFamily ?? 'Open Sans';
+      default:
+        return GoogleFonts.inter().fontFamily ?? 'Inter';
+    }
   }
 
   TextTheme _getTextTheme(String fontName) {

@@ -272,6 +272,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         childCount: monthExpenses.length,
                       ),
                     ),
+                    SliverPadding(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).padding.bottom + 80, // FAB height + safe area
+                      ),
+                    ),
                   ],
                 );
               },

@@ -48,11 +48,25 @@ class SettingsScreen extends ConsumerWidget {
               contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
             items: _fontFamilies.map((font) {
+              final isSelected = font == typography.selectedFontFamily;
               return DropdownMenuItem(
                 value: font,
-                child: Text(
-                  font,
-                  style: _getFontStyle(font),
+                child: Row(
+                  children: [
+                    if (isSelected)
+                      Icon(
+                        Icons.check,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    if (isSelected) const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        font,
+                        style: _getFontStyle(font),
+                      ),
+                    ),
+                  ],
                 ),
               );
             }).toList(),
