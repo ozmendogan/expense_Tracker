@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../app.dart';
+import '../providers/typography_provider.dart';
+
+enum FontStyleOption {
+  normal,
+  italic,
+  bold,
+  boldItalic,
+}
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -41,7 +50,10 @@ class SettingsScreen extends ConsumerWidget {
             items: _fontFamilies.map((font) {
               return DropdownMenuItem(
                 value: font,
-                child: Text(font),
+                child: Text(
+                  font,
+                  style: _getFontStyle(font),
+                ),
               );
             }).toList(),
             onChanged: (value) {
@@ -85,9 +97,96 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const SizedBox(height: 32),
+          // Font Style Section
+          Text(
+            'Yazı Stili',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 16),
+          SegmentedButton<FontStyleOption>(
+            segments: const [
+              ButtonSegment(
+                value: FontStyleOption.normal,
+                label: Text('Normal'),
+              ),
+              ButtonSegment(
+                value: FontStyleOption.italic,
+                label: Text('Italic'),
+              ),
+              ButtonSegment(
+                value: FontStyleOption.bold,
+                label: Text('Bold'),
+              ),
+              ButtonSegment(
+                value: FontStyleOption.boldItalic,
+                label: Text('Bold Italic'),
+              ),
+            ],
+            selected: {_getCurrentFontStyleOption(typography)},
+            onSelectionChanged: (Set<FontStyleOption> selected) {
+              final option = selected.first;
+              _applyFontStyleOption(typography, option);
+            },
+          ),
         ],
       ),
     );
+  }
+
+  FontStyleOption _getCurrentFontStyleOption(TypographyProvider typography) {
+    final isBold = typography.selectedFontWeight == FontWeight.bold;
+    final isItalic = typography.selectedFontStyle == FontStyle.italic;
+
+    if (isBold && isItalic) {
+      return FontStyleOption.boldItalic;
+    } else if (isBold) {
+      return FontStyleOption.bold;
+    } else if (isItalic) {
+      return FontStyleOption.italic;
+    } else {
+      return FontStyleOption.normal;
+    }
+  }
+
+  void _applyFontStyleOption(TypographyProvider typography, FontStyleOption option) {
+    switch (option) {
+      case FontStyleOption.normal:
+        typography.setFontWeight(FontWeight.normal);
+        typography.setFontStyle(FontStyle.normal);
+        break;
+      case FontStyleOption.italic:
+        typography.setFontWeight(FontWeight.normal);
+        typography.setFontStyle(FontStyle.italic);
+        break;
+      case FontStyleOption.bold:
+        typography.setFontWeight(FontWeight.bold);
+        typography.setFontStyle(FontStyle.normal);
+        break;
+      case FontStyleOption.boldItalic:
+        typography.setFontWeight(FontWeight.bold);
+        typography.setFontStyle(FontStyle.italic);
+        break;
+    }
+  }
+
+  TextStyle _getFontStyle(String fontName) {
+    switch (fontName) {
+      case 'Inter':
+        return GoogleFonts.inter();
+      case 'Roboto':
+        return GoogleFonts.roboto();
+      case 'Poppins':
+        return GoogleFonts.poppins();
+      case 'Montserrat':
+        return GoogleFonts.montserrat();
+      case 'Open Sans':
+        return GoogleFonts.openSans();
+      default:
+        return GoogleFonts.inter();
+    }
   }
 }
 
