@@ -66,3 +66,14 @@ final currentMonthTotalProvider = Provider<double>((ref) {
   return currentMonthExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
 });
 
+final currentMonthCategoryTotalsProvider = Provider<Map<Category, double>>((ref) {
+  final currentMonthExpenses = ref.watch(currentMonthExpensesProvider);
+  final Map<Category, double> totals = {};
+  
+  for (final expense in currentMonthExpenses) {
+    totals[expense.category] = (totals[expense.category] ?? 0.0) + expense.amount;
+  }
+  
+  return totals;
+});
+

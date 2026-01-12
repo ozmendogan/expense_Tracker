@@ -5,6 +5,7 @@ import '../widgets/expense_list.dart';
 import '../widgets/add_expense_form.dart';
 import '../widgets/empty_expense_state.dart';
 import '../widgets/monthly_summary_card.dart';
+import '../widgets/category_breakdown_list.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -22,6 +23,7 @@ class HomeScreen extends ConsumerWidget {
     final expenses = ref.watch(expenseProvider);
     final currentMonthTotal = ref.watch(currentMonthTotalProvider);
     final currentMonthExpenses = ref.watch(currentMonthExpensesProvider);
+    final categoryTotals = ref.watch(currentMonthCategoryTotalsProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -37,6 +39,7 @@ class HomeScreen extends ConsumerWidget {
                   totalAmount: currentMonthTotal,
                   expenseCount: currentMonthExpenses.length,
                 ),
+                CategoryBreakdownList(categoryTotals: categoryTotals),
                 Expanded(
                   child: ExpenseList(expenses: expenses),
                 ),
