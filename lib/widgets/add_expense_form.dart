@@ -40,6 +40,7 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
     }
   }
 
+
   @override
   void dispose() {
     _titleController.dispose();
@@ -65,7 +66,25 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
   void _submitForm(WidgetRef ref) {
     if (_formKey.currentState!.validate()) {
       final categories = ref.read(categoryProvider);
-      final categoryId = _selectedCategoryId ?? categories.first.id;
+      if (categories.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Kategori bulunamadı. Lütfen önce bir kategori oluşturun.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Validate selected category exists, fallback to "Other" or first category
+      String categoryId = _selectedCategoryId ?? categories.first.id;
+      final categoryExists = categories.any((c) => c.id == categoryId);
+      if (!categoryExists) {
+        categoryId = categories.firstWhere(
+          (c) => c.id == 'other',
+          orElse: () => categories.first,
+        ).id;
+      }
       
       final expense = Expense(
         id: widget.expenseToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
@@ -87,12 +106,39 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
   @override
   Widget build(BuildContext context) {
     final categories = ref.watch(categoryProvider);
-    if (_selectedCategoryId == null && categories.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() {
-          _selectedCategoryId = categories.first.id;
+    
+    // Validate and fix category when categories are loaded
+    if (categories.isNotEmpty) {
+      // If editing and category doesn't exist, assign to "Other"
+      if (widget.expenseToEdit != null && _selectedCategoryId != null) {
+        final categoryExists = categories.any((c) => c.id == _selectedCategoryId);
+        if (!categoryExists) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              final otherCategory = categories.firstWhere(
+                (c) => c.id == 'other',
+                orElse: () => categories.first,
+              );
+              setState(() {
+                _selectedCategoryId = otherCategory.id;
+              });
+              // Validate all expenses have valid categories
+              ref.read(expenseProvider.notifier).validateExpenseCategories(categories);
+            }
+          });
+        }
+      }
+      
+      // Set default category if not set
+      if (_selectedCategoryId == null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _selectedCategoryId = categories.first.id;
+            });
+          }
         });
-      });
+      }
     }
     return SafeArea(
       child: Padding(
@@ -168,17 +214,53 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
                   decoration: const InputDecoration(
                     labelText: 'Kategori',
                     border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.category),
                   ),
                   items: categories.map((category) {
+                    final isSelected = _selectedCategoryId == category.id;
                     return DropdownMenuItem(
                       value: category.id,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(category.icon, color: category.color, size: 20),
-                          const SizedBox(width: 8),
-                          Text(category.name),
-                        ],
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: isSelected
+                            ? BoxDecoration(
+                                color: category.color.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              )
+                            : null,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: category.color.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                category.icon,
+                                color: category.color,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                category.name,
+                                style: TextStyle(
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                  color: isSelected ? category.color : null,
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              Icon(
+                                Icons.check_circle,
+                                color: category.color,
+                                size: 20,
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   }).toList(),

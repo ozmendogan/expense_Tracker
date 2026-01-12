@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/expense.dart';
+import '../models/category.dart';
 
 const String _expensesKey = 'expenses';
 
@@ -67,6 +68,37 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
       return expense;
     }).toList();
     await _saveExpenses();
+  }
+
+  /// Validates and fixes expenses with invalid category IDs
+  /// Assigns expenses with deleted categories to "Other" category
+  Future<void> validateExpenseCategories(List<Category> validCategories) async {
+    final validCategoryIds = validCategories.map((c) => c.id).toSet();
+    final otherCategoryId = validCategories
+        .firstWhere(
+          (c) => c.id == 'other',
+          orElse: () => validCategories.first,
+        )
+        .id;
+
+    bool hasChanges = false;
+    state = state.map((expense) {
+      if (!validCategoryIds.contains(expense.categoryId)) {
+        hasChanges = true;
+        return Expense(
+          id: expense.id,
+          title: expense.title,
+          amount: expense.amount,
+          date: expense.date,
+          categoryId: otherCategoryId,
+        );
+      }
+      return expense;
+    }).toList();
+
+    if (hasChanges) {
+      await _saveExpenses();
+    }
   }
 }
 
