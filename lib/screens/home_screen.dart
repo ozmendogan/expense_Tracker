@@ -9,6 +9,7 @@ import '../widgets/monthly_summary_card.dart';
 import '../widgets/category_breakdown_list.dart';
 import '../widgets/month_selector.dart';
 import 'category_analysis_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -107,6 +108,19 @@ class HomeScreen extends ConsumerWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const CategoryAnalysisScreen(),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Ayarlar'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const SettingsScreen(),
                   ),
                 );
               },
