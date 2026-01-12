@@ -612,10 +612,25 @@ class _CategoryListItem extends StatelessWidget {
               tooltip: 'Düzenle',
             ),
           if (onDelete != null)
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.red),
-              onPressed: onDelete,
-              tooltip: 'Sil',
+            Container(
+              margin: const EdgeInsets.only(left: 4),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                  size: 22,
+                ),
+                onPressed: onDelete,
+                tooltip: 'Kategoriyi Sil',
+                style: IconButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  padding: const EdgeInsets.all(8),
+                ),
+              ),
             ),
         ],
       ),
