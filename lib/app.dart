@@ -45,30 +45,13 @@ class ExpenseTrackerApp extends StatelessWidget {
               useMaterial3: true,
               colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
               textTheme: selectedTextTheme,
-              fontFamily: _getFontFamilyName(fontName),
+              primaryTextTheme: selectedTextTheme,
             ),
             home: const HomeScreen(),
           ),
         );
       },
     );
-  }
-
-  String _getFontFamilyName(String fontName) {
-    switch (fontName) {
-      case 'Inter':
-        return GoogleFonts.inter().fontFamily ?? 'Inter';
-      case 'Roboto':
-        return GoogleFonts.roboto().fontFamily ?? 'Roboto';
-      case 'Poppins':
-        return GoogleFonts.poppins().fontFamily ?? 'Poppins';
-      case 'Montserrat':
-        return GoogleFonts.montserrat().fontFamily ?? 'Montserrat';
-      case 'Open Sans':
-        return GoogleFonts.openSans().fontFamily ?? 'Open Sans';
-      default:
-        return GoogleFonts.inter().fontFamily ?? 'Inter';
-    }
   }
 
   TextTheme _getTextTheme(String fontName) {
@@ -90,10 +73,7 @@ class ExpenseTrackerApp extends StatelessWidget {
   }
 
   TextTheme _applyFontStyle(TextTheme textTheme, FontWeight fontWeight, FontStyle fontStyle) {
-    return textTheme.apply(
-      bodyColor: null,
-      displayColor: null,
-    ).copyWith(
+    return textTheme.copyWith(
       displayLarge: textTheme.displayLarge?.copyWith(
         fontWeight: fontWeight,
         fontStyle: fontStyle,

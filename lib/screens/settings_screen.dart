@@ -52,6 +52,7 @@ class SettingsScreen extends ConsumerWidget {
               return DropdownMenuItem(
                 value: font,
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     if (isSelected)
                       Icon(
@@ -60,10 +61,11 @@ class SettingsScreen extends ConsumerWidget {
                         color: Theme.of(context).colorScheme.primary,
                       ),
                     if (isSelected) const SizedBox(width: 8),
-                    Expanded(
+                    Flexible(
                       child: Text(
                         font,
                         style: _getFontStyle(font),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
