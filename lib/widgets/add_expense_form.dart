@@ -81,14 +81,15 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -193,6 +194,7 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
                   child: Text(widget.expenseToEdit != null ? 'Güncelle' : 'Ekle'),
                 ),
               ],
+            ),
             ),
           ),
         ),
