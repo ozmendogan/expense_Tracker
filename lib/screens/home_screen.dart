@@ -11,8 +11,58 @@ import '../widgets/category_breakdown_list.dart';
 import 'category_analysis_screen.dart';
 import 'settings_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  PageController? _pageController;
+  int _currentPageIndex = 0;
+  DateTime? _lastSelectedMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize with a large offset to allow scrolling in both directions
+    _currentPageIndex = 1000; // Use a large number as base
+    _pageController = PageController(initialPage: _currentPageIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController?.dispose();
+    super.dispose();
+  }
+
+  DateTime _getMonthFromPageIndex(int pageIndex) {
+    final now = DateTime.now();
+    final baseMonth = DateTime(now.year, now.month);
+    final monthOffset = pageIndex - 1000; // Subtract the base offset
+    return DateTime(baseMonth.year, baseMonth.month + monthOffset);
+  }
+
+  int _getPageIndexFromMonth(DateTime month) {
+    final now = DateTime.now();
+    final baseMonth = DateTime(now.year, now.month);
+    final monthOffset = (month.year - baseMonth.year) * 12 + (month.month - baseMonth.month);
+    return 1000 + monthOffset;
+  }
+
+  void _onPageChanged(int pageIndex) {
+    setState(() {
+      _currentPageIndex = pageIndex;
+    });
+    final newMonth = _getMonthFromPageIndex(pageIndex);
+    if (_lastSelectedMonth == null || 
+        _lastSelectedMonth!.year != newMonth.year || 
+        _lastSelectedMonth!.month != newMonth.month) {
+      _lastSelectedMonth = newMonth;
+      ref.read(selectedMonthProvider.notifier).state = newMonth;
+    }
+  }
 
   void _showAddExpenseModal(BuildContext context) {
     showModalBottomSheet(
@@ -72,14 +122,30 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final selectedMonth = ref.watch(selectedMonthProvider);
     final expenses = ref.watch(expenseProvider);
-    final currentMonthTotal = ref.watch(currentMonthTotalProvider);
-    final currentMonthExpenses = ref.watch(currentMonthExpensesProvider);
-    final categoryTotals = ref.watch(currentMonthCategoryTotalsProvider);
 
-    final monthName = DateFormat('MMMM yyyy', 'tr_TR').format(selectedMonth);
+    // Sync PageController with selectedMonth when it changes from arrow buttons
+    final expectedPageIndex = _getPageIndexFromMonth(selectedMonth);
+    if (_pageController != null && 
+        _pageController!.hasClients && 
+        _currentPageIndex != expectedPageIndex &&
+        (_lastSelectedMonth == null || 
+         _lastSelectedMonth!.year != selectedMonth.year || 
+         _lastSelectedMonth!.month != selectedMonth.month)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_pageController != null && _pageController!.hasClients) {
+          _pageController!.animateToPage(
+            expectedPageIndex,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+          _currentPageIndex = expectedPageIndex;
+          _lastSelectedMonth = selectedMonth;
+        }
+      });
+    }
 
     return Scaffold(
       drawer: Drawer(
@@ -131,60 +197,84 @@ class HomeScreen extends ConsumerWidget {
           ? EmptyExpenseState(
               onAddExpense: () => _showAddExpenseModal(context),
             )
-          : CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  expandedHeight: 100,
-                  floating: false,
-                  pinned: true,
-                  flexibleSpace: FlexibleSpaceBar(
-                    title: Text(
-                      monthName,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+          : PageView.builder(
+              controller: _pageController,
+              onPageChanged: _onPageChanged,
+              itemBuilder: (context, pageIndex) {
+                final monthForPage = _getMonthFromPageIndex(pageIndex);
+                final monthNameForPage = DateFormat('MMMM yyyy', 'tr_TR').format(monthForPage);
+                
+                // Filter expenses for this month
+                final monthExpenses = expenses.where((expense) {
+                  return expense.date.year == monthForPage.year && 
+                         expense.date.month == monthForPage.month;
+                }).toList();
+                
+                final monthTotal = monthExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
+                
+                final monthCategoryTotals = <Category, double>{};
+                for (final expense in monthExpenses) {
+                  monthCategoryTotals[expense.category] = 
+                      (monthCategoryTotals[expense.category] ?? 0.0) + expense.amount;
+                }
+                
+                return CustomScrollView(
+                  key: PageStorageKey<int>(pageIndex),
+                  slivers: [
+                    SliverAppBar(
+                      expandedHeight: 100,
+                      floating: false,
+                      pinned: true,
+                      flexibleSpace: FlexibleSpaceBar(
+                        title: Text(
+                          monthNameForPage,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        centerTitle: true,
+                        titlePadding: const EdgeInsets.only(bottom: 16),
+                      ),
+                      actions: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left),
+                          onPressed: () => _previousMonth(ref),
+                          tooltip: 'Önceki ay',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right),
+                          onPressed: () => _nextMonth(ref),
+                          tooltip: 'Sonraki ay',
+                        ),
+                      ],
                     ),
-                    centerTitle: true,
-                    titlePadding: const EdgeInsets.only(bottom: 16),
-                  ),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left),
-                      onPressed: () => _previousMonth(ref),
-                      tooltip: 'Önceki ay',
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: StickySummaryHeader(
+                        totalAmount: monthTotal,
+                        expenseCount: monthExpenses.length,
+                      ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right),
-                      onPressed: () => _nextMonth(ref),
-                      tooltip: 'Sonraki ay',
+                    SliverToBoxAdapter(
+                      child: CategoryBreakdownList(categoryTotals: monthCategoryTotals),
+                    ),
+                    SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final expense = monthExpenses[index];
+                          return ExpenseCard(
+                            expense: expense,
+                            onLongPress: () {
+                              _showExpenseActions(context, ref, expense);
+                            },
+                          );
+                        },
+                        childCount: monthExpenses.length,
+                      ),
                     ),
                   ],
-                ),
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: StickySummaryHeader(
-                    totalAmount: currentMonthTotal,
-                    expenseCount: currentMonthExpenses.length,
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: CategoryBreakdownList(categoryTotals: categoryTotals),
-                ),
-                SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final expense = currentMonthExpenses[index];
-                      return ExpenseCard(
-                        expense: expense,
-                        onLongPress: () {
-                          _showExpenseActions(context, ref, expense);
-                        },
-                      );
-                    },
-                    childCount: currentMonthExpenses.length,
-                  ),
-                ),
-              ],
+                );
+              },
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddExpenseModal(context),
