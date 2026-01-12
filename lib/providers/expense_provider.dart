@@ -53,3 +53,16 @@ final expenseProvider = StateNotifierProvider<ExpenseNotifier, List<Expense>>(
   (ref) => ExpenseNotifier(),
 );
 
+final currentMonthExpensesProvider = Provider<List<Expense>>((ref) {
+  final expenses = ref.watch(expenseProvider);
+  final now = DateTime.now();
+  return expenses.where((expense) {
+    return expense.date.year == now.year && expense.date.month == now.month;
+  }).toList();
+});
+
+final currentMonthTotalProvider = Provider<double>((ref) {
+  final currentMonthExpenses = ref.watch(currentMonthExpensesProvider);
+  return currentMonthExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
+});
+
