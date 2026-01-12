@@ -1,61 +1,17 @@
-enum Category {
-  food,
-  transport,
-  rent,
-  shopping,
-  utilities,
-  entertainment,
-  health,
-  education,
-  subscription,
-  travel,
-  gift,
-  other,
-}
-
 class Expense {
   final String id;
   final String title;
   final double amount;
   final DateTime date;
-  final Category category;
+  final String categoryId;
 
   Expense({
     required this.id,
     required this.title,
     required this.amount,
     required this.date,
-    required this.category,
+    required this.categoryId,
   });
-
-  String get categoryName {
-    switch (category) {
-      case Category.food:
-        return 'Yemek';
-      case Category.transport:
-        return 'Ulaşım';
-      case Category.rent:
-        return 'Kira';
-      case Category.shopping:
-        return 'Alışveriş';
-      case Category.utilities:
-        return 'Faturalar';
-      case Category.entertainment:
-        return 'Eğlence';
-      case Category.health:
-        return 'Sağlık';
-      case Category.education:
-        return 'Eğitim';
-      case Category.subscription:
-        return 'Abonelik';
-      case Category.travel:
-        return 'Seyahat';
-      case Category.gift:
-        return 'Hediye';
-      case Category.other:
-        return 'Diğer';
-    }
-  }
 
   Map<String, dynamic> toJson() {
     return {
@@ -63,20 +19,39 @@ class Expense {
       'title': title,
       'amount': amount,
       'date': date.toIso8601String(),
-      'category': category.name,
+      'categoryId': categoryId,
     };
   }
 
   factory Expense.fromJson(Map<String, dynamic> json) {
+    // Migration: Eski 'category' (enum name) formatını yeni 'categoryId' formatına çevir
+    String categoryId = 'other'; // Default fallback
+    
+    // Önce yeni formatı kontrol et
+    if (json.containsKey('categoryId')) {
+      final value = json['categoryId'];
+      if (value != null && value is String && value.isNotEmpty) {
+        categoryId = value;
+      }
+    }
+    // Eğer yeni format yoksa veya geçersizse, eski formatı kontrol et
+    else if (json.containsKey('category')) {
+      final value = json['category'];
+      if (value != null && value is String && value.isNotEmpty) {
+        // Eski format: enum name (örn: 'food', 'transport')
+        // Enum name'ler default category ID'lerle aynı olduğu için direkt kullan
+        categoryId = value;
+      }
+    }
+
     return Expense(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      amount: (json['amount'] as num).toDouble(),
-      date: DateTime.parse(json['date'] as String),
-      category: Category.values.firstWhere(
-        (e) => e.name == json['category'],
-        orElse: () => Category.other,
-      ),
+      id: json['id'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      date: json['date'] != null 
+          ? DateTime.tryParse(json['date'] as String) ?? DateTime.now()
+          : DateTime.now(),
+      categoryId: categoryId,
     );
   }
 }

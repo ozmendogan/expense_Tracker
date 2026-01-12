@@ -2,44 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/expense_provider.dart';
-import '../models/expense.dart';
-import '../utils/category_config.dart';
+import '../providers/category_provider.dart';
 
 class CategoryAnalysisScreen extends ConsumerWidget {
   const CategoryAnalysisScreen({super.key});
 
-  String _getCategoryName(Category category) {
-    switch (category) {
-      case Category.food:
-        return 'Yemek';
-      case Category.transport:
-        return 'Ulaşım';
-      case Category.rent:
-        return 'Kira';
-      case Category.shopping:
-        return 'Alışveriş';
-      case Category.utilities:
-        return 'Faturalar';
-      case Category.entertainment:
-        return 'Eğlence';
-      case Category.health:
-        return 'Sağlık';
-      case Category.education:
-        return 'Eğitim';
-      case Category.subscription:
-        return 'Abonelik';
-      case Category.travel:
-        return 'Seyahat';
-      case Category.gift:
-        return 'Hediye';
-      case Category.other:
-        return 'Diğer';
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categoryTotals = ref.watch(currentMonthCategoryTotalsProvider);
+    final categories = ref.watch(categoryProvider);
     final entries = categoryTotals.entries
         .where((entry) => entry.value > 0)
         .toList();
@@ -73,14 +44,20 @@ class CategoryAnalysisScreen extends ConsumerWidget {
                     sectionsSpace: 2,
                     centerSpaceRadius: 60,
                     sections: entries.map((entry) {
-                      final category = entry.key;
+                      final categoryId = entry.key;
                       final amount = entry.value;
                       final percentage = (amount / total) * 100;
-                      final color = categoryColors[category] ?? Colors.grey;
+                      final category = categories.firstWhere(
+                        (c) => c.id == categoryId,
+                        orElse: () => categories.firstWhere(
+                          (c) => c.id == 'other',
+                          orElse: () => categories.first,
+                        ),
+                      );
 
                       return PieChartSectionData(
                         value: amount,
-                        color: color,
+                        color: category.color,
                         title: '${percentage.toStringAsFixed(1)}%',
                         radius: 100,
                         titleStyle: const TextStyle(
@@ -95,11 +72,16 @@ class CategoryAnalysisScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               ...entries.map((entry) {
-                final category = entry.key;
+                final categoryId = entry.key;
                 final amount = entry.value;
                 final percentage = (amount / total) * 100;
-                final color = categoryColors[category] ?? Colors.grey;
-                final icon = categoryIcons[category] ?? Icons.more_horiz;
+                final category = categories.firstWhere(
+                  (c) => c.id == categoryId,
+                  orElse: () => categories.firstWhere(
+                    (c) => c.id == 'other',
+                    orElse: () => categories.first,
+                  ),
+                );
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -108,12 +90,12 @@ class CategoryAnalysisScreen extends ConsumerWidget {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.1),
+                        color: category.color.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(icon, color: color, size: 20),
+                      child: Icon(category.icon, color: category.color, size: 20),
                     ),
-                    title: Text(_getCategoryName(category)),
+                    title: Text(category.name),
                     subtitle: Text('${percentage.toStringAsFixed(1)}%'),
                     trailing: Text(
                       '₺${amount.toStringAsFixed(2)}',

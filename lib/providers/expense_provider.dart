@@ -52,6 +52,22 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
     state = state.map((e) => e.id == expense.id ? expense : e).toList();
     await _saveExpenses();
   }
+
+  Future<void> reassignExpensesToCategory(String oldCategoryId, String newCategoryId) async {
+    state = state.map((expense) {
+      if (expense.categoryId == oldCategoryId) {
+        return Expense(
+          id: expense.id,
+          title: expense.title,
+          amount: expense.amount,
+          date: expense.date,
+          categoryId: newCategoryId,
+        );
+      }
+      return expense;
+    }).toList();
+    await _saveExpenses();
+  }
 }
 
 final expenseProvider = StateNotifierProvider<ExpenseNotifier, List<Expense>>(
@@ -76,12 +92,12 @@ final currentMonthTotalProvider = Provider<double>((ref) {
   return currentMonthExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
 });
 
-final currentMonthCategoryTotalsProvider = Provider<Map<Category, double>>((ref) {
+final currentMonthCategoryTotalsProvider = Provider<Map<String, double>>((ref) {
   final currentMonthExpenses = ref.watch(currentMonthExpensesProvider);
-  final Map<Category, double> totals = {};
+  final Map<String, double> totals = {};
   
   for (final expense in currentMonthExpenses) {
-    totals[expense.category] = (totals[expense.category] ?? 0.0) + expense.amount;
+    totals[expense.categoryId] = (totals[expense.categoryId] ?? 0.0) + expense.amount;
   }
   
   return totals;

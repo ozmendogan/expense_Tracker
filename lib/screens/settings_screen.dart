@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../app.dart';
 import '../providers/typography_provider.dart';
+import 'category_management_screen.dart';
 
 enum FontStyleOption {
   normal,
@@ -112,6 +113,29 @@ class SettingsScreen extends ConsumerWidget {
                     ),
               ),
             ],
+          ),
+          const SizedBox(height: 32),
+          // Category Management Section
+          Text(
+            'Kategoriler',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 16),
+          ListTile(
+            leading: const Icon(Icons.category),
+            title: const Text('Kategori Yönetimi'),
+            subtitle: const Text('Kategorileri düzenle, sil veya ekle'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const CategoryManagementScreen(),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 32),
           // Font Style Section

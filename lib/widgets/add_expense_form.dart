@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/expense.dart';
 import '../providers/expense_provider.dart';
+import '../providers/category_provider.dart';
 
 class AddExpenseForm extends ConsumerStatefulWidget {
   final Expense? expenseToEdit;
@@ -20,7 +21,7 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
   late final TextEditingController _titleController;
   late final TextEditingController _amountController;
   late DateTime _selectedDate;
-  late Category _selectedCategory;
+  String? _selectedCategoryId;
 
   @override
   void initState() {
@@ -30,12 +31,12 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
       _titleController = TextEditingController(text: expense.title);
       _amountController = TextEditingController(text: expense.amount.toString());
       _selectedDate = expense.date;
-      _selectedCategory = expense.category;
+      _selectedCategoryId = expense.categoryId;
     } else {
       _titleController = TextEditingController();
       _amountController = TextEditingController();
       _selectedDate = DateTime.now();
-      _selectedCategory = Category.food;
+      _selectedCategoryId = null; // Will be set to first category in build
     }
   }
 
@@ -61,14 +62,17 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
     }
   }
 
-  void _submitForm() {
+  void _submitForm(WidgetRef ref) {
     if (_formKey.currentState!.validate()) {
+      final categories = ref.read(categoryProvider);
+      final categoryId = _selectedCategoryId ?? categories.first.id;
+      
       final expense = Expense(
         id: widget.expenseToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         title: _titleController.text.trim(),
         amount: double.parse(_amountController.text.trim()),
         date: _selectedDate,
-        category: _selectedCategory,
+        categoryId: categoryId,
       );
 
       if (widget.expenseToEdit != null) {
@@ -82,6 +86,14 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
 
   @override
   Widget build(BuildContext context) {
+    final categories = ref.watch(categoryProvider);
+    if (_selectedCategoryId == null && categories.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        setState(() {
+          _selectedCategoryId = categories.first.id;
+        });
+      });
+    }
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -151,68 +163,36 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                DropdownButtonFormField<Category>(
-                  value: _selectedCategory,
+                DropdownButtonFormField<String>(
+                  value: _selectedCategoryId,
                   decoration: const InputDecoration(
                     labelText: 'Kategori',
                     border: OutlineInputBorder(),
                   ),
-                  items: Category.values.map((category) {
-                    String categoryName;
-                    switch (category) {
-                      case Category.food:
-                        categoryName = 'Yemek';
-                        break;
-                      case Category.transport:
-                        categoryName = 'Ulaşım';
-                        break;
-                      case Category.rent:
-                        categoryName = 'Kira';
-                        break;
-                      case Category.shopping:
-                        categoryName = 'Alışveriş';
-                        break;
-                      case Category.utilities:
-                        categoryName = 'Faturalar';
-                        break;
-                      case Category.entertainment:
-                        categoryName = 'Eğlence';
-                        break;
-                      case Category.health:
-                        categoryName = 'Sağlık';
-                        break;
-                      case Category.education:
-                        categoryName = 'Eğitim';
-                        break;
-                      case Category.subscription:
-                        categoryName = 'Abonelik';
-                        break;
-                      case Category.travel:
-                        categoryName = 'Seyahat';
-                        break;
-                      case Category.gift:
-                        categoryName = 'Hediye';
-                        break;
-                      case Category.other:
-                        categoryName = 'Diğer';
-                        break;
-                    }
+                  items: categories.map((category) {
                     return DropdownMenuItem(
-                      value: category,
-                      child: Text(categoryName),
+                      value: category.id,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(category.icon, color: category.color, size: 20),
+                          const SizedBox(width: 8),
+                          Text(category.name),
+                        ],
+                      ),
                     );
                   }).toList(),
                   onChanged: (value) {
                     if (value != null) {
                       setState(() {
-                        _selectedCategory = value;
+                        _selectedCategoryId = value;
                       });
                     }
                   },
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton(
-                  onPressed: _submitForm,
+                  onPressed: () => _submitForm(ref),
                   child: Text(widget.expenseToEdit != null ? 'Güncelle' : 'Ekle'),
                 ),
               ],

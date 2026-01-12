@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/expense.dart';
-import '../utils/category_config.dart';
+import '../providers/category_provider.dart';
 import '../utils/date_formatter.dart';
 
-class ExpenseCard extends StatelessWidget {
+class ExpenseCard extends ConsumerWidget {
   final Expense expense;
   final VoidCallback? onLongPress;
 
@@ -14,9 +15,15 @@ class ExpenseCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final icon = categoryIcons[expense.category] ?? Icons.more_horiz;
-    final color = categoryColors[expense.category] ?? Colors.grey;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final categories = ref.watch(categoryProvider);
+    final category = categories.firstWhere(
+      (c) => c.id == expense.categoryId,
+      orElse: () => categories.firstWhere((c) => c.id == 'other', orElse: () => categories.first),
+    );
+    
+    final icon = category.icon;
+    final color = category.color;
 
     return GestureDetector(
       onLongPress: onLongPress,
@@ -56,7 +63,7 @@ class ExpenseCard extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          expense.categoryName,
+                          category.name,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),

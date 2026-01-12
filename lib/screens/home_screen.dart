@@ -212,10 +212,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 
                 final monthTotal = monthExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
                 
-                final monthCategoryTotals = <Category, double>{};
+                final monthCategoryTotals = <String, double>{};
                 for (final expense in monthExpenses) {
-                  monthCategoryTotals[expense.category] = 
-                      (monthCategoryTotals[expense.category] ?? 0.0) + expense.amount;
+                  final categoryId = expense.categoryId.isNotEmpty 
+                      ? expense.categoryId 
+                      : 'other'; // Fallback for safety
+                  monthCategoryTotals[categoryId] = 
+                      (monthCategoryTotals[categoryId] ?? 0.0) + expense.amount;
                 }
                 
                 return CustomScrollView(
