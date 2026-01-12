@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/expense_provider.dart';
+import '../models/expense.dart';
 import '../widgets/expense_list.dart';
 import '../widgets/add_expense_form.dart';
 import '../widgets/empty_expense_state.dart';
@@ -17,6 +18,43 @@ class HomeScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       builder: (context) => const AddExpenseForm(),
+    );
+  }
+
+  void _showEditExpenseModal(BuildContext context, Expense expense) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => AddExpenseForm(expenseToEdit: expense),
+    );
+  }
+
+  void _showExpenseActions(BuildContext context, WidgetRef ref, Expense expense) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('Düzenle'),
+              onTap: () {
+                Navigator.pop(context);
+                _showEditExpenseModal(context, expense);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Sil', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                ref.read(expenseProvider.notifier).removeExpense(expense.id);
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -93,7 +131,12 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 CategoryBreakdownList(categoryTotals: categoryTotals),
                 Expanded(
-                  child: ExpenseList(expenses: currentMonthExpenses),
+                  child: ExpenseList(
+                    expenses: currentMonthExpenses,
+                    onExpenseLongPress: (expense) {
+                      _showExpenseActions(context, ref, expense);
+                    },
+                  ),
                 ),
               ],
             ),

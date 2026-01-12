@@ -47,6 +47,11 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
     state = state.where((expense) => expense.id != id).toList();
     await _saveExpenses();
   }
+
+  Future<void> updateExpense(Expense expense) async {
+    state = state.map((e) => e.id == expense.id ? expense : e).toList();
+    await _saveExpenses();
+  }
 }
 
 final expenseProvider = StateNotifierProvider<ExpenseNotifier, List<Expense>>(

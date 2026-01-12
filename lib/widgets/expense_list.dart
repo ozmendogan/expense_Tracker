@@ -4,10 +4,12 @@ import 'expense_card.dart';
 
 class ExpenseList extends StatelessWidget {
   final List<Expense> expenses;
+  final void Function(Expense)? onExpenseLongPress;
 
   const ExpenseList({
     super.key,
     required this.expenses,
+    this.onExpenseLongPress,
   });
 
   @override
@@ -17,7 +19,12 @@ class ExpenseList extends StatelessWidget {
       itemCount: expenses.length,
       itemBuilder: (context, index) {
         final expense = expenses[index];
-        return ExpenseCard(expense: expense);
+        return ExpenseCard(
+          expense: expense,
+          onLongPress: onExpenseLongPress != null
+              ? () => onExpenseLongPress!(expense)
+              : null,
+        );
       },
     );
   }

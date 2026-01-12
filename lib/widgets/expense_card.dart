@@ -5,10 +5,12 @@ import '../utils/date_formatter.dart';
 
 class ExpenseCard extends StatelessWidget {
   final Expense expense;
+  final VoidCallback? onLongPress;
 
   const ExpenseCard({
     super.key,
     required this.expense,
+    this.onLongPress,
   });
 
   @override
@@ -16,7 +18,9 @@ class ExpenseCard extends StatelessWidget {
     final icon = categoryIcons[expense.category] ?? Icons.more_horiz;
     final color = categoryColors[expense.category] ?? Colors.grey;
 
-    return Card(
+    return GestureDetector(
+      onLongPress: onLongPress,
+      child: Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -83,6 +87,7 @@ class ExpenseCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

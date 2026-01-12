@@ -4,7 +4,12 @@ import '../models/expense.dart';
 import '../providers/expense_provider.dart';
 
 class AddExpenseForm extends ConsumerStatefulWidget {
-  const AddExpenseForm({super.key});
+  final Expense? expenseToEdit;
+
+  const AddExpenseForm({
+    super.key,
+    this.expenseToEdit,
+  });
 
   @override
   ConsumerState<AddExpenseForm> createState() => _AddExpenseFormState();
@@ -12,10 +17,27 @@ class AddExpenseForm extends ConsumerStatefulWidget {
 
 class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
-  final _amountController = TextEditingController();
-  DateTime _selectedDate = DateTime.now();
-  Category _selectedCategory = Category.food;
+  late final TextEditingController _titleController;
+  late final TextEditingController _amountController;
+  late DateTime _selectedDate;
+  late Category _selectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.expenseToEdit != null) {
+      final expense = widget.expenseToEdit!;
+      _titleController = TextEditingController(text: expense.title);
+      _amountController = TextEditingController(text: expense.amount.toString());
+      _selectedDate = expense.date;
+      _selectedCategory = expense.category;
+    } else {
+      _titleController = TextEditingController();
+      _amountController = TextEditingController();
+      _selectedDate = DateTime.now();
+      _selectedCategory = Category.food;
+    }
+  }
 
   @override
   void dispose() {
@@ -41,14 +63,18 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       final expense = Expense(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        id: widget.expenseToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
         title: _titleController.text.trim(),
         amount: double.parse(_amountController.text.trim()),
         date: _selectedDate,
         category: _selectedCategory,
       );
 
-      ref.read(expenseProvider.notifier).addExpense(expense);
+      if (widget.expenseToEdit != null) {
+        ref.read(expenseProvider.notifier).updateExpense(expense);
+      } else {
+        ref.read(expenseProvider.notifier).addExpense(expense);
+      }
       Navigator.of(context).pop();
     }
   }
@@ -69,7 +95,7 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Yeni Gider Ekle',
+                  widget.expenseToEdit != null ? 'Gideri Düzenle' : 'Yeni Gider Ekle',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 16),
@@ -164,7 +190,7 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
                 const SizedBox(height: 24),
                 ElevatedButton(
                   onPressed: _submitForm,
-                  child: const Text('Ekle'),
+                  child: Text(widget.expenseToEdit != null ? 'Güncelle' : 'Ekle'),
                 ),
               ],
             ),
