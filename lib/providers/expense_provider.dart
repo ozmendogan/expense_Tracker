@@ -1,15 +1,51 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/expense.dart';
 
-class ExpenseNotifier extends StateNotifier<List<Expense>> {
-  ExpenseNotifier() : super([]);
+const String _expensesKey = 'expenses';
 
-  void addExpense(Expense expense) {
-    state = [...state, expense];
+class ExpenseNotifier extends StateNotifier<List<Expense>> {
+  ExpenseNotifier() : super([]) {
+    _loadExpenses();
   }
 
-  void removeExpense(String id) {
+  Future<void> _loadExpenses() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final expensesJson = prefs.getString(_expensesKey);
+      
+      if (expensesJson != null && expensesJson.isNotEmpty) {
+        final List<dynamic> decoded = json.decode(expensesJson);
+        final expenses = decoded
+            .map((json) => Expense.fromJson(json as Map<String, dynamic>))
+            .toList();
+        state = expenses;
+      }
+    } catch (e) {
+      // Handle corrupted or invalid data gracefully
+      state = [];
+    }
+  }
+
+  Future<void> _saveExpenses() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final expensesJson = json.encode(state.map((e) => e.toJson()).toList());
+      await prefs.setString(_expensesKey, expensesJson);
+    } catch (e) {
+      // Handle save errors gracefully
+    }
+  }
+
+  Future<void> addExpense(Expense expense) async {
+    state = [...state, expense];
+    await _saveExpenses();
+  }
+
+  Future<void> removeExpense(String id) async {
     state = state.where((expense) => expense.id != id).toList();
+    await _saveExpenses();
   }
 }
 
