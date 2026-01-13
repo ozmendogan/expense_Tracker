@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/category.dart';
 import '../providers/category_provider.dart';
 import '../providers/expense_provider.dart';
+import '../utils/category_icons.dart';
 
 class CategoryManagementScreen extends ConsumerWidget {
   const CategoryManagementScreen({super.key});
@@ -116,10 +117,10 @@ class _CategoryFormBottomSheet extends ConsumerStatefulWidget {
 class _CategoryFormBottomSheetState
     extends ConsumerState<_CategoryFormBottomSheet> {
   late final TextEditingController _nameController;
-  late int _selectedIconCodePoint;
+  late String _selectedIconName;
   late int _selectedColorValue;
   late final String _initialName;
-  late final int _initialIconCodePoint;
+  late final String _initialIconName;
   late final int _initialColorValue;
   bool _hasUnsavedChanges = false;
   final _formKey = GlobalKey<FormState>();
@@ -129,17 +130,17 @@ class _CategoryFormBottomSheetState
     super.initState();
     if (widget.categoryToEdit != null) {
       _nameController = TextEditingController(text: widget.categoryToEdit!.name);
-      _selectedIconCodePoint = widget.categoryToEdit!.iconCodePoint;
+      _selectedIconName = widget.categoryToEdit!.iconName;
       _selectedColorValue = widget.categoryToEdit!.colorValue;
       _initialName = widget.categoryToEdit!.name;
-      _initialIconCodePoint = widget.categoryToEdit!.iconCodePoint;
+      _initialIconName = widget.categoryToEdit!.iconName;
       _initialColorValue = widget.categoryToEdit!.colorValue;
     } else {
       _nameController = TextEditingController();
-      _selectedIconCodePoint = Icons.more_horiz.codePoint;
+      _selectedIconName = 'more_horiz';
       _selectedColorValue = const Color(0xFF9E9E9E).toARGB32();
       _initialName = '';
-      _initialIconCodePoint = Icons.more_horiz.codePoint;
+      _initialIconName = 'more_horiz';
       _initialColorValue = const Color(0xFF9E9E9E).toARGB32();
     }
     _nameController.addListener(_onFieldChanged);
@@ -155,7 +156,7 @@ class _CategoryFormBottomSheetState
   void _onFieldChanged() {
     if (!_hasUnsavedChanges) {
       final nameChanged = _nameController.text.trim() != _initialName;
-      final iconChanged = _selectedIconCodePoint != _initialIconCodePoint;
+      final iconChanged = _selectedIconName != _initialIconName;
       final colorChanged = _selectedColorValue != _initialColorValue;
       setState(() {
         _hasUnsavedChanges = nameChanged || iconChanged || colorChanged;
@@ -163,9 +164,9 @@ class _CategoryFormBottomSheetState
     }
   }
 
-  void _onIconChanged(int iconCodePoint) {
+  void _onIconChanged(String iconName) {
     setState(() {
-      _selectedIconCodePoint = iconCodePoint;
+      _selectedIconName = iconName;
     });
     _onFieldChanged();
   }
@@ -214,10 +215,16 @@ class _CategoryFormBottomSheetState
     final categories = ref.read(categoryProvider);
 
     // Check for duplicate names (excluding the current category if editing)
+    // Use exact Unicode comparison - no case conversion, no normalization
+    // This preserves all Unicode characters exactly as entered
     final hasDuplicate = categories.any(
-      (cat) =>
-          cat.name.toLowerCase() == name.toLowerCase() &&
-          (widget.categoryToEdit == null || cat.id != widget.categoryToEdit!.id),
+      (cat) {
+        // Exact comparison using trimmed strings only
+        // This allows all Unicode characters including Turkish (ğ, ş, İ, ı, etc.)
+        final isDuplicate = cat.name.trim() == name.trim();
+        final isNotCurrentCategory = widget.categoryToEdit == null || cat.id != widget.categoryToEdit!.id;
+        return isDuplicate && isNotCurrentCategory;
+      },
     );
 
     if (hasDuplicate) {
@@ -234,7 +241,7 @@ class _CategoryFormBottomSheetState
       // Update existing category
       final updatedCategory = widget.categoryToEdit!.copyWith(
         name: name,
-        iconCodePoint: _selectedIconCodePoint,
+        iconName: _selectedIconName,
         colorValue: _selectedColorValue,
       );
       ref.read(categoryProvider.notifier).updateCategory(updatedCategory);
@@ -243,7 +250,7 @@ class _CategoryFormBottomSheetState
       final newCategory = Category(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         name: name,
-        iconCodePoint: _selectedIconCodePoint,
+        iconName: _selectedIconName,
         colorValue: _selectedColorValue,
         isDefault: false,
       );
@@ -256,10 +263,7 @@ class _CategoryFormBottomSheetState
   @override
   Widget build(BuildContext context) {
     final selectedColor = Color(_selectedColorValue);
-    final selectedIcon = IconData(
-      _selectedIconCodePoint,
-      fontFamily: 'MaterialIcons',
-    );
+    final selectedIcon = getCategoryIcon(_selectedIconName);
 
     return PopScope(
       canPop: false,
@@ -349,7 +353,10 @@ class _CategoryFormBottomSheetState
                             ),
                           ),
                           const SizedBox(height: 24),
-                          // Name Field
+                          // Name Field - COMPLETELY UNRESTRICTED
+                          // Allows ALL Unicode characters including:
+                          // Turkish: ç, ğ, ş, ö, ü, İ, ı
+                          // And all other Unicode characters from any language
                           TextFormField(
                             controller: _nameController,
                             decoration: const InputDecoration(
@@ -357,8 +364,14 @@ class _CategoryFormBottomSheetState
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.label),
                             ),
-                            textCapitalization: TextCapitalization.words,
+                            // NO inputFormatters - allows all characters
+                            // NO keyboardType restriction
+                            // NO textCapitalization - preserves exact input
+                            // NO maxLength restriction
+                            // Validation only checks if empty AFTER user types
                             validator: (value) {
+                              // Only validation: must not be empty
+                              // All Unicode characters are accepted
                               if (value == null || value.trim().isEmpty) {
                                 return 'Lütfen bir kategori adı girin';
                               }
@@ -375,7 +388,7 @@ class _CategoryFormBottomSheetState
                           ),
                           const SizedBox(height: 16),
                           _IconPickerGrid(
-                            selectedIconCodePoint: _selectedIconCodePoint,
+                            selectedIconName: _selectedIconName,
                             onIconSelected: _onIconChanged,
                           ),
                           const SizedBox(height: 32),
@@ -444,40 +457,41 @@ class _CategoryFormBottomSheetState
 }
 
 class _IconPickerGrid extends StatelessWidget {
-  final int selectedIconCodePoint;
-  final ValueChanged<int> onIconSelected;
+  final String selectedIconName;
+  final ValueChanged<String> onIconSelected;
 
   const _IconPickerGrid({
-    required this.selectedIconCodePoint,
+    required this.selectedIconName,
     required this.onIconSelected,
   });
 
-  static final List<IconData> _icons = [
-    Icons.restaurant,
-    Icons.directions_car,
-    Icons.home,
-    Icons.shopping_bag,
-    Icons.subscriptions,
-    Icons.more_horiz,
-    Icons.bolt,
-    Icons.movie,
-    Icons.local_hospital,
-    Icons.school,
-    Icons.flight,
-    Icons.card_giftcard,
-    Icons.fitness_center,
-    Icons.music_note,
-    Icons.sports_soccer,
-    Icons.computer,
-    Icons.phone,
-    Icons.book,
-    Icons.camera_alt,
-    Icons.gamepad,
-    Icons.pets,
-    Icons.beach_access,
-    Icons.local_cafe,
-    Icons.work,
-    Icons.favorite,
+  // Use icon names from categoryIcons map - all const Icons.* references
+  static final List<String> _iconNames = [
+    'restaurant',
+    'directions_car',
+    'home',
+    'shopping_bag',
+    'subscriptions',
+    'more_horiz',
+    'bolt',
+    'movie',
+    'local_hospital',
+    'school',
+    'flight',
+    'card_giftcard',
+    'fitness_center',
+    'music_note',
+    'sports_soccer',
+    'computer',
+    'phone',
+    'book',
+    'camera_alt',
+    'gamepad',
+    'pets',
+    'beach_access',
+    'local_cafe',
+    'work',
+    'favorite',
   ];
 
   @override
@@ -490,14 +504,15 @@ class _IconPickerGrid extends StatelessWidget {
         crossAxisSpacing: 8,
         mainAxisSpacing: 8,
       ),
-      itemCount: _icons.length,
+      itemCount: _iconNames.length,
       itemBuilder: (context, index) {
-        final icon = _icons[index];
-        final isSelected = selectedIconCodePoint == icon.codePoint;
+        final iconName = _iconNames[index];
+        final icon = getCategoryIcon(iconName); // Uses const Icons.* from map
+        final isSelected = selectedIconName == iconName;
         return _IconOption(
           icon: icon,
           isSelected: isSelected,
-          onTap: () => onIconSelected(icon.codePoint),
+          onTap: () => onIconSelected(iconName),
         );
       },
     );
