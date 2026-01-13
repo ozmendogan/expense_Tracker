@@ -169,46 +169,54 @@ class _AddExpenseState extends ConsumerState<AddExpense> {
                     final isSelected = _selectedCategoryId == category.id;
                     return DropdownMenuItem(
                       value: category.id,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        decoration: isSelected
-                            ? BoxDecoration(
-                                color: category.color.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              )
-                            : null,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: category.color.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                category.icon,
-                                color: category.color,
-                                size: 18,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                category.name,
-                                style: TextStyle(
-                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  color: isSelected ? category.color : null,
+                      child: SizedBox(
+                        height: 40,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          decoration: isSelected
+                              ? BoxDecoration(
+                                  color: category.color.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                )
+                              : null,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: category.color.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  category.icon,
+                                  color: category.color,
+                                  size: 18,
                                 ),
                               ),
-                            ),
-                            if (isSelected)
-                              Icon(
-                                Icons.check_circle,
-                                color: category.color,
-                                size: 20,
+                              const SizedBox(width: 12),
+                              Flexible(
+                                child: Text(
+                                  category.name,
+                                  style: TextStyle(
+                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                    color: isSelected ? category.color : null,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                          ],
+                              if (isSelected) ...[
+                                const SizedBox(width: 8),
+                                Icon(
+                                  Icons.check_circle,
+                                  color: category.color,
+                                  size: 20,
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
                     );

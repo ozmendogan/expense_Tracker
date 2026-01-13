@@ -18,7 +18,7 @@ class CategoryBreakdownList extends ConsumerWidget {
         .toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    if (entries.isEmpty) {
+    if (entries.isEmpty || categories.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -39,13 +39,20 @@ class CategoryBreakdownList extends ConsumerWidget {
           ...entries.map((entry) {
             final categoryId = entry.key;
             final amount = entry.value;
-            final category = categories.firstWhere(
+            
+            // Safely find category with fallback
+            // We already checked categories.isNotEmpty above
+            final matchingCategory = categories.firstWhere(
               (c) => c.id == categoryId,
-              orElse: () => categories.firstWhere(
-                (c) => c.id == 'other',
-                orElse: () => categories.first,
-              ),
+              orElse: () {
+                // Try to find 'other' category, otherwise use first
+                return categories.firstWhere(
+                  (c) => c.id == 'other',
+                  orElse: () => categories.first,
+                );
+              },
             );
+            final category = matchingCategory;
 
             return ListTile(
               leading: Container(

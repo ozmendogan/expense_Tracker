@@ -17,9 +17,22 @@ class ExpenseCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final categories = ref.watch(categoryProvider);
+    
+    // Safely find category with fallback - handle empty categories list
+    if (categories.isEmpty) {
+      // Return a minimal placeholder if no categories exist
+      return const SizedBox.shrink();
+    }
+    
     final category = categories.firstWhere(
       (c) => c.id == expense.categoryId,
-      orElse: () => categories.firstWhere((c) => c.id == 'other', orElse: () => categories.first),
+      orElse: () {
+        // Try to find 'other' category, otherwise use first
+        return categories.firstWhere(
+          (c) => c.id == 'other',
+          orElse: () => categories.first,
+        );
+      },
     );
     
     final icon = category.icon;
@@ -28,12 +41,13 @@ class ExpenseCard extends ConsumerWidget {
     return GestureDetector(
       onLongPress: onLongPress,
       child: Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.max,
+            children: [
             Container(
               width: 48,
               height: 48,
@@ -51,6 +65,7 @@ class ExpenseCard extends ConsumerWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     expense.title,
@@ -60,8 +75,9 @@ class ExpenseCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Flexible(
+                      Expanded(
                         child: Text(
                           category.name,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -79,7 +95,7 @@ class ExpenseCard extends ConsumerWidget {
                             ),
                       ),
                       const SizedBox(width: 8),
-                      Flexible(
+                      Expanded(
                         child: Text(
                           formatDate(expense.date),
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -102,9 +118,9 @@ class ExpenseCard extends ConsumerWidget {
                     color: Theme.of(context).colorScheme.primary,
                   ),
             ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../models/expense.dart';
+import '../models/transaction_type.dart';
 import '../widgets/expense_card.dart';
 import '../widgets/add_expense_form.dart';
+import '../widgets/add_income_form.dart';
+import '../widgets/transaction_type_selector.dart';
 import '../widgets/empty_expense_state.dart';
 import '../widgets/sticky_summary_header.dart';
 import '../widgets/category_breakdown_list.dart';
@@ -64,11 +67,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  void _showTransactionTypeSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => TransactionTypeSelector(
+        onSelected: (type) {
+          if (type == TransactionType.income) {
+            _showAddIncomeModal(context);
+          } else {
+            _showAddExpenseModal(context);
+          }
+        },
+      ),
+    );
+  }
+
   void _showAddExpenseModal(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (context) => const AddExpenseForm(),
+    );
+  }
+
+  void _showAddIncomeModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => const AddIncomeForm(),
     );
   }
 
@@ -285,7 +311,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               },
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddExpenseModal(context),
+        onPressed: () => _showTransactionTypeSelector(context),
         child: const Icon(Icons.add),
       ),
     );
