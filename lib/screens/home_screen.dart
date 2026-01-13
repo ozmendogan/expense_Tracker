@@ -13,6 +13,7 @@ import '../widgets/sticky_summary_header.dart';
 import '../widgets/category_breakdown_list.dart';
 import 'category_analysis_screen.dart';
 import 'settings_screen.dart';
+import 'reports_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -354,6 +355,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   fontSize: 24,
                 ),
               ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: const Text('Raporlar'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ReportsScreen(),
+                  ),
+                );
+              },
             ),
             ListTile(
               leading: const Icon(Icons.analytics),
