@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/income.dart';
-import '../providers/income_provider.dart';
+import '../models/expense.dart';
+import '../models/transaction_type.dart';
+import '../providers/expense_provider.dart';
 
 class AddIncomeForm extends ConsumerStatefulWidget {
-  const AddIncomeForm({super.key});
+  final Expense? incomeToEdit;
+
+  const AddIncomeForm({
+    super.key,
+    this.incomeToEdit,
+  });
 
   @override
   ConsumerState<AddIncomeForm> createState() => _AddIncomeFormState();
@@ -19,9 +25,16 @@ class _AddIncomeFormState extends ConsumerState<AddIncomeForm> {
   @override
   void initState() {
     super.initState();
-    _amountController = TextEditingController();
-    _descriptionController = TextEditingController();
-    _selectedDate = DateTime.now();
+    if (widget.incomeToEdit != null) {
+      final income = widget.incomeToEdit!;
+      _amountController = TextEditingController(text: income.amount.toString());
+      _descriptionController = TextEditingController(text: income.description ?? '');
+      _selectedDate = income.date;
+    } else {
+      _amountController = TextEditingController();
+      _descriptionController = TextEditingController();
+      _selectedDate = DateTime.now();
+    }
   }
 
   @override
@@ -48,16 +61,24 @@ class _AddIncomeFormState extends ConsumerState<AddIncomeForm> {
 
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
-      final income = Income(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
+      final description = _descriptionController.text.trim();
+      final title = description.isEmpty ? 'Gelir' : description;
+      
+      final incomeTransaction = Expense(
+        id: widget.incomeToEdit?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        title: title,
         amount: double.parse(_amountController.text.trim()),
-        description: _descriptionController.text.trim().isEmpty
-            ? null
-            : _descriptionController.text.trim(),
         date: _selectedDate,
+        categoryId: null, // Income doesn't have category
+        type: TransactionType.income,
+        description: description.isEmpty ? null : description,
       );
 
-      ref.read(incomeProvider.notifier).addIncome(income);
+      if (widget.incomeToEdit != null) {
+        ref.read(expenseProvider.notifier).updateTransaction(incomeTransaction);
+      } else {
+        ref.read(expenseProvider.notifier).addIncome(incomeTransaction);
+      }
       Navigator.of(context).pop();
     }
   }
@@ -79,7 +100,7 @@ class _AddIncomeFormState extends ConsumerState<AddIncomeForm> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Yeni Gelir Ekle',
+                    widget.incomeToEdit != null ? 'Geliri Düzenle' : 'Yeni Gelir Ekle',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 16),
@@ -148,7 +169,7 @@ class _AddIncomeFormState extends ConsumerState<AddIncomeForm> {
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _submitForm,
-                    child: const Text('Ekle'),
+                    child: Text(widget.incomeToEdit != null ? 'Güncelle' : 'Ekle'),
                   ),
                 ],
               ),

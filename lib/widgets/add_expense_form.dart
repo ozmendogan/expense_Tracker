@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/expense.dart';
+import '../models/transaction_type.dart';
 import '../providers/expense_provider.dart';
 import '../providers/category_provider.dart';
 
@@ -103,6 +104,8 @@ class _AddExpenseFormState extends ConsumerState<AddExpenseForm> {
         amount: double.parse(_amountController.text.trim()),
         date: _selectedDate,
         categoryId: categoryId,
+        type: TransactionType.expense,
+        description: null,
       );
 
       if (widget.expenseToEdit != null) {

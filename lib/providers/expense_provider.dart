@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
+import '../models/transaction_type.dart';
+import '../models/income.dart';
 
 const String _expensesKey = 'expenses';
+const String _incomesKey = 'incomes';
 
 class ExpenseNotifier extends StateNotifier<List<Expense>> {
   ExpenseNotifier() : super([]) {
@@ -14,14 +17,69 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
   Future<void> _loadExpenses() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final expensesJson = prefs.getString(_expensesKey);
+      final List<Expense> allTransactions = [];
       
+      // Load expenses
+      final expensesJson = prefs.getString(_expensesKey);
       if (expensesJson != null && expensesJson.isNotEmpty) {
-        final List<dynamic> decoded = json.decode(expensesJson);
-        final expenses = decoded
-            .map((json) => Expense.fromJson(json as Map<String, dynamic>))
-            .toList();
-        state = expenses;
+        try {
+          final List<dynamic> decoded = json.decode(expensesJson);
+          final expenses = decoded
+              .map((json) {
+                try {
+                  return Expense.fromJson(json as Map<String, dynamic>);
+                } catch (e) {
+                  return null;
+                }
+              })
+              .whereType<Expense>()
+              .toList();
+          allTransactions.addAll(expenses);
+        } catch (e) {
+          // Handle corrupted expense data
+        }
+      }
+      
+      // Load and migrate incomes to Expense format
+      final incomesJson = prefs.getString(_incomesKey);
+      if (incomesJson != null && incomesJson.isNotEmpty) {
+        try {
+          final List<dynamic> decoded = json.decode(incomesJson);
+          final incomes = decoded
+              .map((json) {
+                try {
+                  final income = Income.fromJson(json as Map<String, dynamic>);
+                  // Convert Income to Expense with type=income
+                  return Expense(
+                    id: income.id,
+                    title: income.description ?? 'Gelir',
+                    amount: income.amount,
+                    date: income.date,
+                    categoryId: null, // Income doesn't have category
+                    type: TransactionType.income,
+                    description: income.description,
+                  );
+                } catch (e) {
+                  return null;
+                }
+              })
+              .whereType<Expense>()
+              .toList();
+          allTransactions.addAll(incomes);
+        } catch (e) {
+          // Handle corrupted income data
+        }
+      }
+      
+      // Sort by date (newest first)
+      allTransactions.sort((a, b) => b.date.compareTo(a.date));
+      
+      state = allTransactions;
+      
+      // If we migrated incomes, save the merged data and clear old income storage
+      if (incomesJson != null && incomesJson.isNotEmpty) {
+        await _saveExpenses();
+        await prefs.remove(_incomesKey); // Clear old income storage
       }
     } catch (e) {
       // Handle corrupted or invalid data gracefully
@@ -41,17 +99,36 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
 
   Future<void> addExpense(Expense expense) async {
     state = [...state, expense];
+    // Sort by date after adding
+    state.sort((a, b) => b.date.compareTo(a.date));
     await _saveExpenses();
+  }
+  
+  Future<void> addIncome(Expense incomeTransaction) async {
+    // Income is now stored as Expense with type=income
+    await addExpense(incomeTransaction);
   }
 
   Future<void> removeExpense(String id) async {
     state = state.where((expense) => expense.id != id).toList();
     await _saveExpenses();
   }
+  
+  Future<void> removeTransaction(String id) async {
+    // Unified method for removing both income and expense
+    await removeExpense(id);
+  }
 
   Future<void> updateExpense(Expense expense) async {
     state = state.map((e) => e.id == expense.id ? expense : e).toList();
+    // Sort by date after updating
+    state.sort((a, b) => b.date.compareTo(a.date));
     await _saveExpenses();
+  }
+  
+  Future<void> updateTransaction(Expense transaction) async {
+    // Unified method for updating both income and expense
+    await updateExpense(transaction);
   }
 
   Future<void> reassignExpensesToCategory(String oldCategoryId, String newCategoryId) async {
@@ -63,6 +140,8 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
           amount: expense.amount,
           date: expense.date,
           categoryId: newCategoryId,
+          type: expense.type,
+          description: expense.description,
         );
       }
       return expense;
@@ -83,7 +162,10 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
 
     bool hasChanges = false;
     state = state.map((expense) {
-      if (!validCategoryIds.contains(expense.categoryId)) {
+      // Only validate expenses, not incomes (incomes don't have categoryId)
+      if (expense.type == TransactionType.expense && 
+          expense.categoryId != null && 
+          !validCategoryIds.contains(expense.categoryId)) {
         hasChanges = true;
         return Expense(
           id: expense.id,
@@ -91,6 +173,8 @@ class ExpenseNotifier extends StateNotifier<List<Expense>> {
           amount: expense.amount,
           date: expense.date,
           categoryId: otherCategoryId,
+          type: expense.type,
+          description: expense.description,
         );
       }
       return expense;
@@ -129,7 +213,11 @@ final currentMonthCategoryTotalsProvider = Provider<Map<String, double>>((ref) {
   final Map<String, double> totals = {};
   
   for (final expense in currentMonthExpenses) {
-    totals[expense.categoryId] = (totals[expense.categoryId] ?? 0.0) + expense.amount;
+    // Only count expenses (not incomes) and ensure categoryId is not null
+    if (expense.type == TransactionType.expense && expense.categoryId != null) {
+      final categoryId = expense.categoryId!;
+      totals[categoryId] = (totals[categoryId] ?? 0.0) + expense.amount;
+    }
   }
   
   return totals;

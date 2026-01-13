@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
-import '../providers/income_provider.dart';
 import '../models/expense.dart';
 import '../models/transaction_type.dart';
 import '../widgets/expense_card.dart';
@@ -107,7 +106,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  void _showExpenseActions(BuildContext context, WidgetRef ref, Expense expense) {
+  void _showEditIncomeModal(BuildContext context, Expense incomeTransaction) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => AddIncomeForm(incomeToEdit: incomeTransaction),
+    );
+  }
+
+  void _showTransactionActions(BuildContext context, WidgetRef ref, Expense transaction) {
+    final isIncome = transaction.type == TransactionType.income;
     showModalBottomSheet(
       context: context,
       builder: (context) => SafeArea(
@@ -116,10 +124,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.edit),
-              title: const Text('Düzenle'),
+              title: Text(isIncome ? 'Geliri Düzenle' : 'Gideri Düzenle'),
               onTap: () {
                 Navigator.pop(context);
-                _showEditExpenseModal(context, expense);
+                if (isIncome) {
+                  _showEditIncomeModal(context, transaction);
+                } else {
+                  _showEditExpenseModal(context, transaction);
+                }
               },
             ),
             ListTile(
@@ -127,7 +139,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               title: const Text('Sil', style: TextStyle(color: Colors.red)),
               onTap: () {
                 Navigator.pop(context);
-                ref.read(expenseProvider.notifier).removeExpense(expense.id);
+                ref.read(expenseProvider.notifier).removeTransaction(transaction.id);
               },
             ),
           ],
@@ -151,8 +163,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final selectedMonth = ref.watch(selectedMonthProvider);
-    final expenses = ref.watch(expenseProvider);
-    final incomes = ref.watch(incomeProvider);
+    final expenses = ref.watch(expenseProvider); // Now contains both income and expense
 
     // Sync PageController with selectedMonth when it changes from arrow buttons
     final expectedPageIndex = _getPageIndexFromMonth(selectedMonth);
@@ -232,17 +243,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 final monthForPage = _getMonthFromPageIndex(pageIndex);
                 final monthNameForPage = DateFormat('MMMM yyyy', 'tr_TR').format(monthForPage);
                 
-                // Filter expenses for this month
-                final monthExpenses = expenses.where((expense) {
-                  return expense.date.year == monthForPage.year && 
-                         expense.date.month == monthForPage.month;
+                // Filter all transactions (expenses + incomes) for this month
+                final monthTransactions = expenses.where((transaction) {
+                  return transaction.date.year == monthForPage.year && 
+                         transaction.date.month == monthForPage.month;
                 }).toList();
                 
-                // Filter incomes for this month
-                final monthIncomes = incomes.where((income) {
-                  return income.date.year == monthForPage.year && 
-                         income.date.month == monthForPage.month;
-                }).toList();
+                // Sort by date (newest first)
+                monthTransactions.sort((a, b) => b.date.compareTo(a.date));
+                
+                // Separate expenses and incomes for calculations
+                final monthExpenses = monthTransactions.where((t) => t.type == TransactionType.expense).toList();
+                final monthIncomes = monthTransactions.where((t) => t.type == TransactionType.income).toList();
                 
                 // Calculate totals separately - ensure valid doubles
                 final monthExpenseTotalRaw = monthExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
@@ -256,10 +268,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ? 0.0 
                     : monthIncomeTotalRaw;
                 
+                // Category totals only for expenses
                 final monthCategoryTotals = <String, double>{};
                 for (final expense in monthExpenses) {
-                  final categoryId = expense.categoryId.isNotEmpty 
-                      ? expense.categoryId 
+                  final categoryId = expense.categoryId != null && expense.categoryId!.isNotEmpty 
+                      ? expense.categoryId! 
                       : 'other'; // Fallback for safety
                   monthCategoryTotals[categoryId] = 
                       (monthCategoryTotals[categoryId] ?? 0.0) + expense.amount;
@@ -309,15 +322,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (context, index) {
-                          final expense = monthExpenses[index];
+                          final transaction = monthTransactions[index];
                           return ExpenseCard(
-                            expense: expense,
+                            expense: transaction,
                             onLongPress: () {
-                              _showExpenseActions(context, ref, expense);
+                              _showTransactionActions(context, ref, transaction);
                             },
                           );
                         },
-                        childCount: monthExpenses.length,
+                        childCount: monthTransactions.length,
                       ),
                     ),
                     SliverPadding(
