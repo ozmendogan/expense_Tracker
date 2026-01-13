@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
+import '../providers/income_provider.dart';
 import '../models/expense.dart';
 import '../models/transaction_type.dart';
 import '../widgets/expense_card.dart';
@@ -151,6 +152,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final selectedMonth = ref.watch(selectedMonthProvider);
     final expenses = ref.watch(expenseProvider);
+    final incomes = ref.watch(incomeProvider);
 
     // Sync PageController with selectedMonth when it changes from arrow buttons
     final expectedPageIndex = _getPageIndexFromMonth(selectedMonth);
@@ -236,7 +238,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                          expense.date.month == monthForPage.month;
                 }).toList();
                 
-                final monthTotal = monthExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
+                // Filter incomes for this month
+                final monthIncomes = incomes.where((income) {
+                  return income.date.year == monthForPage.year && 
+                         income.date.month == monthForPage.month;
+                }).toList();
+                
+                // Calculate totals separately - ensure valid doubles
+                final monthExpenseTotalRaw = monthExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
+                final monthIncomeTotalRaw = monthIncomes.fold(0.0, (sum, income) => sum + income.amount);
+                
+                // Ensure values are valid (not NaN or infinite)
+                final monthExpenseTotal = monthExpenseTotalRaw.isNaN || monthExpenseTotalRaw.isInfinite 
+                    ? 0.0 
+                    : monthExpenseTotalRaw;
+                final monthIncomeTotal = monthIncomeTotalRaw.isNaN || monthIncomeTotalRaw.isInfinite 
+                    ? 0.0 
+                    : monthIncomeTotalRaw;
                 
                 final monthCategoryTotals = <String, double>{};
                 for (final expense in monthExpenses) {
@@ -280,7 +298,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     SliverPersistentHeader(
                       pinned: true,
                       delegate: StickySummaryHeader(
-                        totalAmount: monthTotal,
+                        incomeTotal: monthIncomeTotal,
+                        expenseTotal: monthExpenseTotal,
                         expenseCount: monthExpenses.length,
                       ),
                     ),
