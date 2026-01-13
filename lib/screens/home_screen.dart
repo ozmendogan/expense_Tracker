@@ -22,50 +22,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  PageController? _pageController;
-  int _currentPageIndex = 0;
-  DateTime? _lastSelectedMonth;
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize with a large offset to allow scrolling in both directions
-    _currentPageIndex = 1000; // Use a large number as base
-    _pageController = PageController(initialPage: _currentPageIndex);
-  }
-
-  @override
-  void dispose() {
-    _pageController?.dispose();
-    super.dispose();
-  }
-
-  DateTime _getMonthFromPageIndex(int pageIndex) {
-    final now = DateTime.now();
-    final baseMonth = DateTime(now.year, now.month);
-    final monthOffset = pageIndex - 1000; // Subtract the base offset
-    return DateTime(baseMonth.year, baseMonth.month + monthOffset);
-  }
-
-  int _getPageIndexFromMonth(DateTime month) {
-    final now = DateTime.now();
-    final baseMonth = DateTime(now.year, now.month);
-    final monthOffset = (month.year - baseMonth.year) * 12 + (month.month - baseMonth.month);
-    return 1000 + monthOffset;
-  }
-
-  void _onPageChanged(int pageIndex) {
-    setState(() {
-      _currentPageIndex = pageIndex;
-    });
-    final newMonth = _getMonthFromPageIndex(pageIndex);
-    if (_lastSelectedMonth == null || 
-        _lastSelectedMonth!.year != newMonth.year || 
-        _lastSelectedMonth!.month != newMonth.month) {
-      _lastSelectedMonth = newMonth;
-      ref.read(selectedMonthProvider.notifier).state = newMonth;
-    }
-  }
+  final ScrollController _scrollController = ScrollController();
+  final Map<DateTime, GlobalKey> _monthKeys = {};
 
   void _showTransactionTypeSelector(BuildContext context) {
     showModalBottomSheet(
@@ -160,31 +118,225 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.read(selectedMonthProvider.notifier).state = next;
   }
 
+  // Group transactions by month
+  Map<DateTime, List<Expense>> _groupTransactionsByMonth(List<Expense> transactions) {
+    final Map<DateTime, List<Expense>> grouped = {};
+    
+    for (final transaction in transactions) {
+      final monthKey = DateTime(transaction.date.year, transaction.date.month);
+      grouped.putIfAbsent(monthKey, () => []).add(transaction);
+    }
+    
+    // Sort transactions within each month (newest first)
+    for (final monthTransactions in grouped.values) {
+      monthTransactions.sort((a, b) => b.date.compareTo(a.date));
+    }
+    
+    return grouped;
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // Scroll to selected month
+  void _scrollToMonth(DateTime month) {
+    final monthKey = DateTime(month.year, month.month);
+    final key = _monthKeys[monthKey];
+    if (key != null && key.currentContext != null) {
+      Scrollable.ensureVisible(
+        key.currentContext!,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  // Build transaction timeline with month grouping
+  Widget _buildTransactionTimeline(
+    BuildContext context,
+    WidgetRef ref,
+    Map<DateTime, List<Expense>> groupedTransactions,
+    List<DateTime> monthKeys,
+    DateTime selectedMonth,
+  ) {
+    final monthName = DateFormat('MMMM yyyy', 'tr_TR').format(selectedMonth);
+    
+    // Calculate totals for selected month (for summary header)
+    final selectedMonthKey = DateTime(selectedMonth.year, selectedMonth.month);
+    final selectedMonthTransactions = groupedTransactions[selectedMonthKey] ?? [];
+    final monthExpenses = selectedMonthTransactions.where((t) => t.type == TransactionType.expense).toList();
+    final monthIncomes = selectedMonthTransactions.where((t) => t.type == TransactionType.income).toList();
+    
+    final monthExpenseTotal = monthExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
+    final monthIncomeTotal = monthIncomes.fold(0.0, (sum, income) => sum + income.amount);
+    
+    // Category totals only for expenses (for selected month)
+    final monthCategoryTotals = <String, double>{};
+    for (final expense in monthExpenses) {
+      final categoryId = expense.categoryId != null && expense.categoryId!.isNotEmpty 
+          ? expense.categoryId! 
+          : 'other';
+      monthCategoryTotals[categoryId] = 
+          (monthCategoryTotals[categoryId] ?? 0.0) + expense.amount;
+    }
+
+    // Build list items with month headers - show ALL transactions
+    final List<Widget> timelineItems = [];
+    
+    for (final monthKey in monthKeys) {
+      final monthTransactions = groupedTransactions[monthKey]!;
+      
+      // Create or get key for this month
+      if (!_monthKeys.containsKey(monthKey)) {
+        _monthKeys[monthKey] = GlobalKey();
+      }
+      
+      // Add month header
+      final monthHeaderName = DateFormat('MMMM yyyy', 'tr_TR').format(monthKey);
+      timelineItems.add(
+        Container(
+          key: _monthKeys[monthKey],
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Text(
+                monthHeaderName,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      );
+      
+      // Add transactions for this month
+      for (final transaction in monthTransactions) {
+        timelineItems.add(
+          ExpenseCard(
+            expense: transaction,
+            onLongPress: () {
+              _showTransactionActions(context, ref, transaction);
+            },
+          ),
+        );
+      }
+      
+      // If this is the selected month and it's empty, show empty state message
+      if (monthKey == selectedMonthKey && monthTransactions.isEmpty) {
+        timelineItems.add(
+          Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.receipt_long_outlined,
+                    size: 64,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Bu ay için işlem bulunamadı',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+    }
+
+    return CustomScrollView(
+      controller: _scrollController,
+      slivers: [
+        SliverAppBar(
+          expandedHeight: 100,
+          floating: false,
+          pinned: true,
+          flexibleSpace: FlexibleSpaceBar(
+            title: Text(
+              monthName,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+            ),
+            centerTitle: true,
+            titlePadding: const EdgeInsets.only(bottom: 16),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.chevron_left),
+              onPressed: () => _previousMonth(ref),
+              tooltip: 'Önceki ay',
+            ),
+            IconButton(
+              icon: const Icon(Icons.chevron_right),
+              onPressed: () => _nextMonth(ref),
+              tooltip: 'Sonraki ay',
+            ),
+          ],
+        ),
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: StickySummaryHeader(
+            incomeTotal: monthIncomeTotal,
+            expenseTotal: monthExpenseTotal,
+            expenseCount: monthExpenses.length,
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: CategoryBreakdownList(categoryTotals: monthCategoryTotals),
+        ),
+        SliverList(
+          delegate: SliverChildListDelegate(timelineItems),
+        ),
+        SliverPadding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom + 80, // FAB height + safe area
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selectedMonth = ref.watch(selectedMonthProvider);
-    final expenses = ref.watch(expenseProvider); // Now contains both income and expense
+    final allTransactions = ref.watch(expenseProvider); // Now contains both income and expense
 
-    // Sync PageController with selectedMonth when it changes from arrow buttons
-    final expectedPageIndex = _getPageIndexFromMonth(selectedMonth);
-    if (_pageController != null && 
-        _pageController!.hasClients && 
-        _currentPageIndex != expectedPageIndex &&
-        (_lastSelectedMonth == null || 
-         _lastSelectedMonth!.year != selectedMonth.year || 
-         _lastSelectedMonth!.month != selectedMonth.month)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_pageController != null && _pageController!.hasClients) {
-          _pageController!.animateToPage(
-            expectedPageIndex,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-          _currentPageIndex = expectedPageIndex;
-          _lastSelectedMonth = selectedMonth;
-        }
-      });
-    }
+    // Sort all transactions by date descending (newest first)
+    final sortedTransactions = List<Expense>.from(allTransactions);
+    sortedTransactions.sort((a, b) => b.date.compareTo(a.date));
+
+    // Group transactions by month
+    final groupedTransactions = _groupTransactionsByMonth(sortedTransactions);
+    
+    // Get sorted month keys (newest first)
+    final monthKeys = groupedTransactions.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
+
+    // Scroll to selected month when it changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToMonth(selectedMonth);
+    });
 
     return Scaffold(
       drawer: Drawer(
@@ -232,115 +384,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ],
         ),
       ),
-      body: expenses.isEmpty
+      body: allTransactions.isEmpty
           ? EmptyExpenseState(
               onAddExpense: () => _showAddExpenseModal(context),
             )
-          : PageView.builder(
-              controller: _pageController,
-              onPageChanged: _onPageChanged,
-              itemBuilder: (context, pageIndex) {
-                final monthForPage = _getMonthFromPageIndex(pageIndex);
-                final monthNameForPage = DateFormat('MMMM yyyy', 'tr_TR').format(monthForPage);
-                
-                // Filter all transactions (expenses + incomes) for this month
-                final monthTransactions = expenses.where((transaction) {
-                  return transaction.date.year == monthForPage.year && 
-                         transaction.date.month == monthForPage.month;
-                }).toList();
-                
-                // Sort by date (newest first)
-                monthTransactions.sort((a, b) => b.date.compareTo(a.date));
-                
-                // Separate expenses and incomes for calculations
-                final monthExpenses = monthTransactions.where((t) => t.type == TransactionType.expense).toList();
-                final monthIncomes = monthTransactions.where((t) => t.type == TransactionType.income).toList();
-                
-                // Calculate totals separately - ensure valid doubles
-                final monthExpenseTotalRaw = monthExpenses.fold(0.0, (sum, expense) => sum + expense.amount);
-                final monthIncomeTotalRaw = monthIncomes.fold(0.0, (sum, income) => sum + income.amount);
-                
-                // Ensure values are valid (not NaN or infinite)
-                final monthExpenseTotal = monthExpenseTotalRaw.isNaN || monthExpenseTotalRaw.isInfinite 
-                    ? 0.0 
-                    : monthExpenseTotalRaw;
-                final monthIncomeTotal = monthIncomeTotalRaw.isNaN || monthIncomeTotalRaw.isInfinite 
-                    ? 0.0 
-                    : monthIncomeTotalRaw;
-                
-                // Category totals only for expenses
-                final monthCategoryTotals = <String, double>{};
-                for (final expense in monthExpenses) {
-                  final categoryId = expense.categoryId != null && expense.categoryId!.isNotEmpty 
-                      ? expense.categoryId! 
-                      : 'other'; // Fallback for safety
-                  monthCategoryTotals[categoryId] = 
-                      (monthCategoryTotals[categoryId] ?? 0.0) + expense.amount;
-                }
-                
-                return CustomScrollView(
-                  key: PageStorageKey<int>(pageIndex),
-                  slivers: [
-                    SliverAppBar(
-                      expandedHeight: 100,
-                      floating: false,
-                      pinned: true,
-                      flexibleSpace: FlexibleSpaceBar(
-                        title: Text(
-                          monthNameForPage,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        centerTitle: true,
-                        titlePadding: const EdgeInsets.only(bottom: 16),
-                      ),
-                      actions: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed: () => _previousMonth(ref),
-                          tooltip: 'Önceki ay',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right),
-                          onPressed: () => _nextMonth(ref),
-                          tooltip: 'Sonraki ay',
-                        ),
-                      ],
-                    ),
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: StickySummaryHeader(
-                        incomeTotal: monthIncomeTotal,
-                        expenseTotal: monthExpenseTotal,
-                        expenseCount: monthExpenses.length,
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: CategoryBreakdownList(categoryTotals: monthCategoryTotals),
-                    ),
-                    SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final transaction = monthTransactions[index];
-                          return ExpenseCard(
-                            expense: transaction,
-                            onLongPress: () {
-                              _showTransactionActions(context, ref, transaction);
-                            },
-                          );
-                        },
-                        childCount: monthTransactions.length,
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: EdgeInsets.only(
-                        bottom: MediaQuery.of(context).padding.bottom + 80, // FAB height + safe area
-                      ),
-                    ),
-                  ],
-                );
-              },
+          : _buildTransactionTimeline(
+              context,
+              ref,
+              groupedTransactions,
+              monthKeys,
+              selectedMonth,
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showTransactionTypeSelector(context),
