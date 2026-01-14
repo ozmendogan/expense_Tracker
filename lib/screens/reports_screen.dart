@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../models/transaction_type.dart';
+import '../widgets/insights/monthly_insights_card.dart';
 
 class ReportsScreen extends ConsumerWidget {
   const ReportsScreen({super.key});
@@ -467,6 +468,9 @@ class ReportsScreen extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
+              // Monthly Insights Card
+              const MonthlyInsightsCard(),
             ],
           ),
         ),

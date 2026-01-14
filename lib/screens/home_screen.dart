@@ -272,16 +272,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           expandedHeight: 100,
           floating: false,
           pinned: true,
-          flexibleSpace: FlexibleSpaceBar(
-            title: Text(
-              monthName,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            centerTitle: true,
-            titlePadding: const EdgeInsets.only(bottom: 16),
-          ),
+                      flexibleSpace: FlexibleSpaceBar(
+                        title: Text(
+                          monthName,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        centerTitle: true,
+                        titlePadding: const EdgeInsets.only(bottom: 8),
+                      ),
           actions: [
             IconButton(
               icon: const Icon(Icons.chevron_left),

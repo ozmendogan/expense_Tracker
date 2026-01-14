@@ -16,103 +16,112 @@ class StickySummaryHeader extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
+    // Calculate net amount
+    final netAmount = incomeTotal - expenseTotal;
+    final isNetPositive = netAmount >= 0;
+    
+    return SizedBox(
       height: maxExtent,
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Bu Ay',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              // Income and Expense row (horizontal layout)
+              Row(
                 children: [
-                  // Income row
-                  if (incomeTotal > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '+ ',
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green[700],
-                                    ),
+                  // Income section (left)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Gelir',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
-                              Text(
-                                '₺${incomeTotal.toStringAsFixed(2)}',
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green[700],
-                                    ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '+₺${incomeTotal.toStringAsFixed(2)}',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[700],
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  // Expense row
-                  if (expenseTotal > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '- ',
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red[700],
-                                    ),
+                  ),
+                  // Vertical divider
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                  ),
+                  // Expense section (right)
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Gider',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
-                              Text(
-                                '₺${expenseTotal.toStringAsFixed(2)}',
-                                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red[700],
-                                    ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '-₺${expenseTotal.toStringAsFixed(2)}',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red[700],
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  // Show expense count if there are expenses
-                  if (expenseCount > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        '$expenseCount gider',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                      ),
-                    ),
+                  ),
                 ],
               ),
-            ],
+              // Net section (below)
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.only(top: 10),
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      'Net Durum',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    Text(
+                      '${isNetPositive ? '+' : ''}₺${netAmount.abs().toStringAsFixed(2)}',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isNetPositive ? Colors.green[700] : Colors.red[700],
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              ],
+            ),
           ),
         ),
       ),
@@ -121,16 +130,9 @@ class StickySummaryHeader extends SliverPersistentHeaderDelegate {
 
   @override
   double get maxExtent {
-    // Ensure values are non-null and valid
-    final safeIncomeTotal = incomeTotal.isNaN || incomeTotal.isInfinite ? 0.0 : incomeTotal;
-    final safeExpenseTotal = expenseTotal.isNaN || expenseTotal.isInfinite ? 0.0 : expenseTotal;
-    final safeExpenseCount = expenseCount < 0 ? 0 : expenseCount;
-    
-    final hasIncome = safeIncomeTotal > 0;
-    final hasExpense = safeExpenseTotal > 0;
-    final hasCount = safeExpenseCount > 0;
-    final itemCount = (hasIncome ? 1 : 0) + (hasExpense ? 1 : 0) + (hasCount ? 1 : 0);
-    return (60.0 + (itemCount * 40.0) + (itemCount > 1 ? 16.0 : 0.0)).clamp(100.0, 200.0);
+    // Compact height: card margin (4*2=8) + padding (16+12=28) + income/expense row (~50) + spacing (12) + net section (~40) = ~138
+    // Using 140 to ensure no overflow
+    return 140.0;
   }
 
   @override
@@ -156,4 +158,3 @@ class StickySummaryHeader extends SliverPersistentHeaderDelegate {
         oldCount != newCount;
   }
 }
-
